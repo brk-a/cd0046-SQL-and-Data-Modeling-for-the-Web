@@ -209,6 +209,31 @@ def search_venues():
 def show_venue(venue_id):
   # shows the venue page with the given venue_id
   # TODO: replace with real venue data from the venues table, using venue_id
+  venue = Venue.query.filter_by(id=venue_id).first()
+  shows = Show.query.filter_by(venue_id=venue_id).all()
+
+  data = {
+      "id": venue.id,
+      "name": venue.name,
+      "genres": venue.genres,
+      "address": venue.address,
+      "city": venue.city,
+      "state": venue.state,
+      "phone": venue.phone,
+      "website": venue.website,
+      "facebook_link": venue.facebook_link,
+      "seeking_talent": venue.seeking_talent,
+      "seeking_description": venue.seeking_description,
+      "image_link": venue.image_link,
+      "past_shows": past_shows(shows),
+      "upcoming_shows": upcoming_shows(shows),
+      "past_shows_count": len(past_shows(shows)),
+      "upcoming_shows_count": len(upcoming_shows(shows))
+  }
+  return render_template('pages/show_venue.html', venue=data)
+
+
+  '''
   data1={
     "id": 1,
     "name": "The Musical Hop",
@@ -288,6 +313,7 @@ def show_venue(venue_id):
   }
   data = list(filter(lambda d: d['id'] == venue_id, [data1, data2, data3]))[0]
   return render_template('pages/show_venue.html', venue=data)
+  '''
 
 #  Create Venue
 #  ----------------------------------------------------------------
@@ -301,22 +327,63 @@ def create_venue_form():
 def create_venue_submission():
   # TODO: insert form data as a new Venue record in the db, instead
   # TODO: modify data to be the data object returned from db insertion
+  try:
+      form = VenueForm()
+      venue = Venue(
+          name=form.name.data,
+          city=form.city.data,
+          state=form.state.data,
+          address=form.address.data,
+          phone=form.phone.data,
+          genres=form.genres.data,
+          facebook_link=form.facebook_link.data,
+          website=form.website.data,
+          image_link=form.image_link.data,
+          seeking_talent=form.seeking_talent.data,
+          seeking_description=form.seeking_description.data,
+      )
+      db.session.add(venue)
+      db.session.commit()
+      # on successful db insert, flash success
+      flash('Venue ' + venue.name + ' was successfully listed!')
+      return render_template('pages/home.html')
+  except Exception as e:
+      print(f'Error ==> {e}')
+      flash('An error occurred. Venue ' + request.form['name'] + ' could not be listed.')
+      db.session.rollback()
+      return render_template('pages/home.html')
+  finally:
+      db.session.close()
 
+  '''
   # on successful db insert, flash success
   flash('Venue ' + request.form['name'] + ' was successfully listed!')
   # TODO: on unsuccessful db insert, flash an error instead.
   # e.g., flash('An error occurred. Venue ' + data.name + ' could not be listed.')
   # see: http://flask.pocoo.org/docs/1.0/patterns/flashing/
   return render_template('pages/home.html')
+  '''
 
 @app.route('/venues/<venue_id>', methods=['DELETE'])
 def delete_venue(venue_id):
   # TODO: Complete this endpoint for taking a venue_id, and using
   # SQLAlchemy ORM to delete a record. Handle cases where the session commit could fail.
 
+  try:
+      venue = Venue.query.get(venue_id)
+      db.session.delete(venue)
+      db.session.commit()
+      return render_template('pages/venues.html')
+  except Exception as e:
+      print(f'Error ==> {e}')
+      flash('An error occurred. Venue could not be deleted.')
+      db.session.rollback()
+      abort(400)
+  finally:
+      db.session.close()
   # BONUS CHALLENGE: Implement a button to delete a Venue on a Venue Page, have it so that
   # clicking that button delete it from the db then redirect the user to the homepage
-  return None
+  '''return None'''
 
 #  Artists
 #  ----------------------------------------------------------------
