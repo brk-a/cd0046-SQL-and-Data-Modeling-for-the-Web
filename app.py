@@ -24,7 +24,7 @@ app.config.from_object('config')
 db = SQLAlchemy(app)
 
 # TODO: connect to a local postgresql database
-app.config['SQL_ALCHEMY_DATABASE_URI'] = 'postgresql://postgres@localshost:5432/fyyur-app'
+app.config['SQL_ALCHEMY_DATABASE_URI'] = 'postgres://postgres@localshost:5432/fyyur-app'
 app.config['SQL_ALCHEMY_TRACK_MODIFICATIONS'] = False
 migrate = Migrate(app, db)
 
@@ -130,6 +130,23 @@ def index():
 def venues():
   # TODO: replace with real venues data.
   #       num_upcoming_shows should be aggregated based on number of upcoming shows per venue.
+  areas = db.session.query(Venue.city, Venue.state).distinct()
+  data = []
+  for venue in areas:
+      venue = dict(zip(('city', 'state'), venue))
+      venue['venues'] = []
+      for venue_data in Venue.query.filter_by(city=venue['city'], state=venue['state']).all():
+          shows = Show.query.filter_by(venue_id=venue_data.id).all()
+          venues_data = {
+              'id': venue_data.id,
+              'name': venue_data.name,
+              'num_upcoming_shows': len(upcoming_shows(shows))
+          }
+          venue['venues'].append(venues_data)
+      data.append(venue)
+  return render_template('pages/venues.html', areas=data)
+
+  '''
   data=[{
     "city": "San Francisco",
     "state": "CA",
@@ -152,12 +169,31 @@ def venues():
     }]
   }]
   return render_template('pages/venues.html', areas=data);
+  '''
 
 @app.route('/venues/search', methods=['POST'])
 def search_venues():
   # TODO: implement search on artists with partial string search. Ensure it is case-insensitive.
   # seach for Hop should return "The Musical Hop".
   # search for "Music" should return "The Musical Hop" and "Park Square Live Music & Coffee"
+  response = {
+        "data": []
+    }
+  venues = db.session.query(Venue.name, Venue.id).all()
+  for venue in venues:
+      name = venue[0]
+      id = venue[1]
+      if name.find(request.form.get('search_term', '')) != -1:
+          shows = Show.query.filter_by(venue_id=id).all()
+          venue = dict(zip(('name', 'id'), venue))
+          venue['num_upcoming_shows'] = len(upcoming_shows(shows))
+          response['data'].append(venue)
+  response['count'] = len(response['data'])
+  return render_template('pages/search_venues.html', results=response,
+                          search_term=request.form.get('search_term', ''))
+
+
+  '''
   response={
     "count": 1,
     "data": [{
@@ -167,6 +203,7 @@ def search_venues():
     }]
   }
   return render_template('pages/search_venues.html', results=response, search_term=request.form.get('search_term', ''))
+  '''
 
 @app.route('/venues/<int:venue_id>')
 def show_venue(venue_id):
